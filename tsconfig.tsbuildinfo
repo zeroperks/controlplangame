@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/player.tsx","./src/scene.tsx","./src/main.tsx","./src/components/building.tsx","./src/components/infrascene.tsx","./src/components/link.tsx","./src/components/packets.tsx","./src/sim/index.ts","./src/ui/componentpanel.tsx","./src/ui/controls.tsx","./src/ui/dashboard.tsx"],"version":"5.9.3"}

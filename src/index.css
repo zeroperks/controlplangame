@@ -23,6 +23,13 @@ canvas {
   display: block;
 }
 
+.app-shell {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(180deg, #f9fbff 0%, #eef3fb 60%, #dde7f5 100%);
+}
+
 .ui-overlay {
   position: absolute;
   inset: 0;
@@ -122,6 +129,64 @@ button:disabled {
   bottom: 20px;
   right: 20px;
   width: 260px;
+}
+
+.top-center {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+
+.scene-hint {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 340px;
+  text-align: center;
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0.92);
+  color: #1c2a3a;
+  border-color: rgba(17, 33, 61, 0.1);
+  box-shadow: 0 12px 30px rgba(28, 42, 58, 0.2);
+}
+
+.scene-hint .small {
+  color: #4a5d73;
+}
+
+.top-center button {
+  pointer-events: auto;
+  background: #ffb97b;
+  color: #2c1a08;
+}
+
+.component-tabs {
+  margin-bottom: 12px;
+}
+
+.component-tabs .tab-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.component-tabs .tab {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #d7e4ff;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  padding-inline: 10px;
+}
+
+.component-tabs .tab.active {
+  background: #5d86ff;
+  color: #ffffff;
+  border-color: transparent;
 }
 
 .warning {
