@@ -16,6 +16,7 @@ interface ControlsProps {
   scaleCost: number;
   lbUpgradeCost: number;
   dbUpgradeCost: number;
+  pendingConnectionLabel?: string | null;
 }
 
 export const Controls = ({
@@ -33,11 +34,17 @@ export const Controls = ({
   isPaused,
   scaleCost,
   lbUpgradeCost,
-  dbUpgradeCost
+  dbUpgradeCost,
+  pendingConnectionLabel
 }: ControlsProps) => {
   return (
     <div className="panel">
       <h3>Operations Console</h3>
+      {pendingConnectionLabel ? (
+        <div className="small" style={{ marginBottom: 8, color: "#9ef5ff" }}>
+          Pending link: {pendingConnectionLabel}
+        </div>
+      ) : null}
       <div className="small">Demand Generator</div>
       <input
         className="slider"

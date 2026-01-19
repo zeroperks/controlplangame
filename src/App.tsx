@@ -7,11 +7,13 @@ import { Dashboard } from "./ui/Dashboard";
 import {
   COMPONENTS,
   ComponentKey,
+  COMPONENTS,
   SimState,
   createInitialState,
   computeMetrics,
   tickSim
 } from "./sim";
+import { Connection, PortRef, PortType } from "./types/connections";
 
 const SCALE_COST = 120;
 const LB_UPGRADE_COST = 180;
@@ -34,6 +36,8 @@ export default function App() {
   const [tickMs, setTickMs] = useState(1000);
   const [isPaused, setIsPaused] = useState(false);
   const [costOverride, setCostOverride] = useState<number | null>(null);
+  const [pendingPort, setPendingPort] = useState<PortRef | null>(null);
+  const [connections, setConnections] = useState<Connection[]>([]);
   const [draggingComponent, setDraggingComponent] = useState<ComponentKey | null>(null);
   const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(null);
   const [placedComponents, setPlacedComponents] = useState<PlacedComponent[]>([]);
@@ -178,6 +182,22 @@ export default function App() {
     setCostOverride(value);
   };
 
+  const handlePortClick = (key: ComponentKey, port: PortType) => {
+    setPendingPort((prevPending) => {
+      if (!prevPending) return { key, port };
+      if (prevPending.key === key && prevPending.port === port) return null;
+      setConnections((prevConnections) => [
+        ...prevConnections,
+        { from: prevPending, to: { key, port } }
+      ]);
+      return null;
+    });
+  };
+
+  const pendingConnectionLabel = pendingPort
+    ? `${COMPONENTS[pendingPort.key].name} (${pendingPort.port})`
+    : null;
+
   const handleDragStart = (key: ComponentKey, position: { x: number; y: number }) => {
     setDraggingComponent(key);
     setCursorPosition(position);
@@ -192,6 +212,9 @@ export default function App() {
         cacheEnabled={state.cacheEnabled}
         queueEnabled={state.queueEnabled}
         appInstances={state.appInstances}
+        connections={connections}
+        pendingPort={pendingPort}
+        onPortClick={handlePortClick}
         placedComponents={placedComponents}
       />
 
@@ -223,6 +246,7 @@ export default function App() {
             scaleCost={SCALE_COST}
             lbUpgradeCost={LB_UPGRADE_COST}
             dbUpgradeCost={DB_UPGRADE_COST}
+            pendingConnectionLabel={pendingConnectionLabel}
           />
         </div>
         <div className="bottom-left">

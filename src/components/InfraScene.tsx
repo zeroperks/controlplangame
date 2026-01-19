@@ -3,9 +3,9 @@ import { Canvas } from "@react-three/fiber";
 import { useMemo } from "react";
 import { Color } from "three";
 import { COMPONENTS, ComponentKey, SimMetrics } from "../sim";
+import { Connection, PortRef, PortType } from "../types/connections";
 import { Building } from "./Building";
 import { Link } from "./Link";
-import { Packets } from "./Packets";
 
 interface InfraSceneProps {
   metrics: SimMetrics;
@@ -14,6 +14,9 @@ interface InfraSceneProps {
   cacheEnabled: boolean;
   queueEnabled: boolean;
   appInstances: number;
+  connections: Connection[];
+  pendingPort: PortRef | null;
+  onPortClick: (key: ComponentKey, port: PortType) => void;
   placedComponents: PlacedComponent[];
 }
 
@@ -30,6 +33,9 @@ export const InfraScene = ({
   cacheEnabled,
   queueEnabled,
   appInstances,
+  connections,
+  pendingPort,
+  onPortClick
   placedComponents
 }: InfraSceneProps) => {
   const positions = useMemo(
@@ -42,6 +48,51 @@ export const InfraScene = ({
     }),
     []
   );
+
+  const portOffsets: Record<PortType, [number, number, number]> = {
+    in: [0, -0.2, 0.95],
+    out: [0, -0.2, -0.95]
+  };
+
+  const componentActive: Record<ComponentKey, boolean> = {
+    lb: true,
+    app: true,
+    db: true,
+    cache: cacheEnabled,
+    queue: queueEnabled
+  };
+
+  const getPortPosition = (key: ComponentKey, port: PortType) => {
+    const [x, y, z] = positions[key];
+    const [ox, oy, oz] = portOffsets[port];
+    return [x + ox, y + oy, z + oz] as [number, number, number];
+  };
+
+  const getFlowForConnection = (from: ComponentKey, to: ComponentKey) => {
+    const pair = `${from}-${to}`;
+    switch (pair) {
+      case "lb-app":
+      case "app-lb":
+        return metrics.linkFlows.lbToApp;
+      case "app-db":
+      case "db-app":
+        return metrics.linkFlows.appToDb;
+      case "app-cache":
+      case "cache-app":
+        return metrics.linkFlows.appToCache;
+      case "cache-db":
+      case "db-cache":
+        return metrics.linkFlows.cacheToDb;
+      case "app-queue":
+      case "queue-app":
+        return metrics.linkFlows.appToQueue;
+      case "queue-db":
+      case "db-queue":
+        return metrics.linkFlows.queueToDb;
+      default:
+        return 0;
+    }
+  };
 
   const showErrorPulse = metrics.errorRate > 0.2;
   const isActive = (key: ComponentKey) => {
@@ -71,6 +122,7 @@ export const InfraScene = ({
       </mesh>
 
       <Building
+        componentKey="lb"
         status={metrics.components.lb}
         label={COMPONENTS.lb.name}
         position={positions.lb}
@@ -78,8 +130,11 @@ export const InfraScene = ({
         selected={selected === "lb"}
         errorPulse={showErrorPulse}
         onSelect={() => onSelect("lb")}
+        onPortClick={onPortClick}
+        pendingPort={pendingPort}
       />
       <Building
+        componentKey="app"
         status={metrics.components.app}
         label={`App Server x${appInstances}`}
         position={positions.app}
@@ -87,8 +142,11 @@ export const InfraScene = ({
         selected={selected === "app"}
         errorPulse={showErrorPulse}
         onSelect={() => onSelect("app")}
+        onPortClick={onPortClick}
+        pendingPort={pendingPort}
       />
       <Building
+        componentKey="db"
         status={metrics.components.db}
         label={COMPONENTS.db.name}
         position={positions.db}
@@ -96,8 +154,11 @@ export const InfraScene = ({
         selected={selected === "db"}
         errorPulse={showErrorPulse}
         onSelect={() => onSelect("db")}
+        onPortClick={onPortClick}
+        pendingPort={pendingPort}
       />
       <Building
+        componentKey="cache"
         status={metrics.components.cache}
         label={COMPONENTS.cache.name}
         position={positions.cache}
@@ -105,8 +166,11 @@ export const InfraScene = ({
         selected={selected === "cache"}
         errorPulse={showErrorPulse && cacheEnabled}
         onSelect={() => onSelect("cache")}
+        onPortClick={onPortClick}
+        pendingPort={pendingPort}
       />
       <Building
+        componentKey="queue"
         status={metrics.components.queue}
         label={COMPONENTS.queue.name}
         position={positions.queue}
@@ -114,6 +178,8 @@ export const InfraScene = ({
         selected={selected === "queue"}
         errorPulse={showErrorPulse && queueEnabled}
         onSelect={() => onSelect("queue")}
+        onPortClick={onPortClick}
+        pendingPort={pendingPort}
       />
 
       {placedComponents.map((placed) => (
@@ -130,16 +196,9 @@ export const InfraScene = ({
       ))}
 
       <Link points={[positions.lb, positions.app]} flow={metrics.linkFlows.lbToApp} active />
-      <Packets start={positions.lb} end={positions.app} flow={metrics.linkFlows.lbToApp} active />
 
       <Link
         points={[positions.app, positions.db]}
-        flow={metrics.linkFlows.appToDb}
-        active={!cacheEnabled}
-      />
-      <Packets
-        start={positions.app}
-        end={positions.db}
         flow={metrics.linkFlows.appToDb}
         active={!cacheEnabled}
       />
@@ -154,18 +213,6 @@ export const InfraScene = ({
         flow={metrics.linkFlows.cacheToDb}
         active={cacheEnabled}
       />
-      <Packets
-        start={positions.app}
-        end={positions.cache}
-        flow={metrics.linkFlows.appToCache}
-        active={cacheEnabled}
-      />
-      <Packets
-        start={positions.cache}
-        end={positions.db}
-        flow={metrics.linkFlows.cacheToDb}
-        active={cacheEnabled}
-      />
 
       <Link
         points={[positions.app, positions.queue]}
@@ -177,20 +224,20 @@ export const InfraScene = ({
         flow={metrics.linkFlows.queueToDb}
         active={queueEnabled}
       />
-      <Packets
-        start={positions.app}
-        end={positions.queue}
-        flow={metrics.linkFlows.appToQueue}
-        active={queueEnabled}
-        offset={[0, 0.3, 0]}
-      />
-      <Packets
-        start={positions.queue}
-        end={positions.db}
-        flow={metrics.linkFlows.queueToDb}
-        active={queueEnabled}
-        offset={[0, 0.3, 0]}
-      />
+      {connections.map((connection, index) => {
+        const start = getPortPosition(connection.from.key, connection.from.port);
+        const end = getPortPosition(connection.to.key, connection.to.port);
+        const flow = getFlowForConnection(connection.from.key, connection.to.key);
+        const active = componentActive[connection.from.key] && componentActive[connection.to.key];
+        return (
+          <Link
+            key={`${connection.from.key}-${connection.from.port}-${connection.to.key}-${connection.to.port}-${index}`}
+            points={[start, end]}
+            flow={flow}
+            active={active}
+          />
+        );
+      })}
     </Canvas>
   );
 };
