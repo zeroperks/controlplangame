@@ -9,8 +9,10 @@ interface ControlsProps {
   onUpgradeDb: () => void;
   onToggleCache: () => void;
   onToggleQueue: () => void;
+  onTogglePause: () => void;
   cacheEnabled: boolean;
   queueEnabled: boolean;
+  isPaused: boolean;
   scaleCost: number;
   lbUpgradeCost: number;
   dbUpgradeCost: number;
@@ -25,8 +27,10 @@ export const Controls = ({
   onUpgradeDb,
   onToggleCache,
   onToggleQueue,
+  onTogglePause,
   cacheEnabled,
   queueEnabled,
+  isPaused,
   scaleCost,
   lbUpgradeCost,
   dbUpgradeCost
@@ -61,6 +65,10 @@ export const Controls = ({
       <div className="button-row">
         <button onClick={onToggleCache}>{cacheEnabled ? "Disable" : "Unlock"} Cache</button>
         <button onClick={onToggleQueue}>{queueEnabled ? "Disable" : "Unlock"} Queue</button>
+      </div>
+
+      <div className="button-row">
+        <button onClick={onTogglePause}>{isPaused ? "Resume" : "Pause"} Sim</button>
       </div>
     </div>
   );
