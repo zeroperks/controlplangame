@@ -35,7 +35,7 @@ export const InfraScene = ({
   appInstances,
   connections,
   pendingPort,
-  onPortClick
+  onPortClick,
   placedComponents
 }: InfraSceneProps) => {
   const positions = useMemo(
@@ -185,6 +185,7 @@ export const InfraScene = ({
       {placedComponents.map((placed) => (
         <Building
           key={placed.id}
+          componentKey={placed.key}
           status={metrics.components[placed.key]}
           label={labelForKey(placed.key)}
           position={placed.position}
@@ -192,6 +193,8 @@ export const InfraScene = ({
           selected={selected === placed.key}
           errorPulse={showErrorPulse && isActive(placed.key)}
           onSelect={() => onSelect(placed.key)}
+          onPortClick={onPortClick}
+          pendingPort={pendingPort}
         />
       ))}
 

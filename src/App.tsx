@@ -7,7 +7,6 @@ import { Dashboard } from "./ui/Dashboard";
 import {
   COMPONENTS,
   ComponentKey,
-  COMPONENTS,
   SimState,
   createInitialState,
   computeMetrics,
