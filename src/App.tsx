@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { InfraScene } from "./components/InfraScene";
+import { InfraScene, PlacedComponent } from "./components/InfraScene";
 import { ComponentPanel } from "./ui/ComponentPanel";
+import { ComponentPalette } from "./ui/ComponentPalette";
 import { Controls } from "./ui/Controls";
 import { Dashboard } from "./ui/Dashboard";
 import {
+  COMPONENTS,
   ComponentKey,
   SimState,
   createInitialState,
@@ -16,11 +18,15 @@ const LB_UPGRADE_COST = 180;
 const DB_UPGRADE_COST = 160;
 const CACHE_UNLOCK_COST = 140;
 const QUEUE_UNLOCK_COST = 140;
+const SCENE_WIDTH = 20;
+const SCENE_DEPTH = 16;
 
 const applyCost = (state: SimState, cost: number) => ({
   ...state,
   cash: state.cash - cost
 });
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 export default function App() {
   const [state, setState] = useState<SimState>(() => createInitialState());
@@ -28,6 +34,9 @@ export default function App() {
   const [tickMs, setTickMs] = useState(1000);
   const [isPaused, setIsPaused] = useState(false);
   const [costOverride, setCostOverride] = useState<number | null>(null);
+  const [draggingComponent, setDraggingComponent] = useState<ComponentKey | null>(null);
+  const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(null);
+  const [placedComponents, setPlacedComponents] = useState<PlacedComponent[]>([]);
   const tickMsRef = useRef(tickMs);
   const pausedRef = useRef(isPaused);
   const costOverrideRef = useRef(costOverride);
@@ -43,6 +52,47 @@ export default function App() {
   useEffect(() => {
     costOverrideRef.current = costOverride;
   }, [costOverride]);
+
+  useEffect(() => {
+    if (!draggingComponent) return;
+
+    const handleMove = (event: MouseEvent) => {
+      setCursorPosition({ x: event.clientX, y: event.clientY });
+    };
+
+    const handleDrop = (event: MouseEvent) => {
+      const point = { x: event.clientX, y: event.clientY };
+      setCursorPosition(point);
+      setPlacedComponents((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          key: draggingComponent,
+          position: [
+            clamp((point.x / window.innerWidth - 0.5) * SCENE_WIDTH, -SCENE_WIDTH / 2, SCENE_WIDTH / 2),
+            0,
+            clamp((point.y / window.innerHeight - 0.5) * SCENE_DEPTH, -SCENE_DEPTH / 2, SCENE_DEPTH / 2)
+          ]
+        }
+      ]);
+      setDraggingComponent(null);
+    };
+
+    const handleCancel = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setDraggingComponent(null);
+      }
+    };
+
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleDrop);
+    window.addEventListener("keydown", handleCancel);
+    return () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleDrop);
+      window.removeEventListener("keydown", handleCancel);
+    };
+  }, [draggingComponent]);
 
   useEffect(() => {
     let frameId = 0;
@@ -128,6 +178,11 @@ export default function App() {
     setCostOverride(value);
   };
 
+  const handleDragStart = (key: ComponentKey, position: { x: number; y: number }) => {
+    setDraggingComponent(key);
+    setCursorPosition(position);
+  };
+
   return (
     <div style={{ position: "relative", height: "100vh" }}>
       <InfraScene
@@ -137,6 +192,7 @@ export default function App() {
         cacheEnabled={state.cacheEnabled}
         queueEnabled={state.queueEnabled}
         appInstances={state.appInstances}
+        placedComponents={placedComponents}
       />
 
       <div className="ui-overlay">
@@ -194,6 +250,17 @@ export default function App() {
             smooth spikes.
           </div>
         </div>
+        <div className="bottom-bar">
+          <ComponentPalette onDragStart={handleDragStart} draggingComponent={draggingComponent} />
+        </div>
+        {draggingComponent && cursorPosition && (
+          <div
+            className="drag-ghost"
+            style={{ left: cursorPosition.x + 12, top: cursorPosition.y + 12 }}
+          >
+            {COMPONENTS[draggingComponent].name}
+          </div>
+        )}
       </div>
     </div>
   );
