@@ -17,6 +17,13 @@ interface InfraSceneProps {
   connections: Connection[];
   pendingPort: PortRef | null;
   onPortClick: (key: ComponentKey, port: PortType) => void;
+  placedComponents: PlacedComponent[];
+}
+
+export interface PlacedComponent {
+  id: string;
+  key: ComponentKey;
+  position: [number, number, number];
 }
 
 export const InfraScene = ({
@@ -29,6 +36,7 @@ export const InfraScene = ({
   connections,
   pendingPort,
   onPortClick
+  placedComponents
 }: InfraSceneProps) => {
   const positions = useMemo(
     () => ({
@@ -87,6 +95,13 @@ export const InfraScene = ({
   };
 
   const showErrorPulse = metrics.errorRate > 0.2;
+  const isActive = (key: ComponentKey) => {
+    if (key === "cache") return cacheEnabled;
+    if (key === "queue") return queueEnabled;
+    return true;
+  };
+  const labelForKey = (key: ComponentKey) =>
+    key === "app" ? `${COMPONENTS.app.name} x${appInstances}` : COMPONENTS[key].name;
 
   return (
     <Canvas camera={{ position: [10, 9, 10], fov: 45 }}>
@@ -166,6 +181,19 @@ export const InfraScene = ({
         onPortClick={onPortClick}
         pendingPort={pendingPort}
       />
+
+      {placedComponents.map((placed) => (
+        <Building
+          key={placed.id}
+          status={metrics.components[placed.key]}
+          label={labelForKey(placed.key)}
+          position={placed.position}
+          active={isActive(placed.key)}
+          selected={selected === placed.key}
+          errorPulse={showErrorPulse && isActive(placed.key)}
+          onSelect={() => onSelect(placed.key)}
+        />
+      ))}
 
       <Link points={[positions.lb, positions.app]} flow={metrics.linkFlows.lbToApp} active />
 
