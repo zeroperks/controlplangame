@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { InfraScene } from "./components/InfraScene";
 import { ComponentPanel } from "./ui/ComponentPanel";
 import { Controls } from "./ui/Controls";
@@ -25,16 +25,56 @@ const applyCost = (state: SimState, cost: number) => ({
 export default function App() {
   const [state, setState] = useState<SimState>(() => createInitialState());
   const [selected, setSelected] = useState<ComponentKey | null>("lb");
+  const [tickMs, setTickMs] = useState(1000);
+  const [isPaused, setIsPaused] = useState(false);
+  const [costOverride, setCostOverride] = useState<number | null>(null);
+  const tickMsRef = useRef(tickMs);
+  const pausedRef = useRef(isPaused);
+  const costOverrideRef = useRef(costOverride);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setState((prev) => tickSim(prev));
-    }, 1000);
+    tickMsRef.current = tickMs;
+  }, [tickMs]);
 
-    return () => clearInterval(interval);
+  useEffect(() => {
+    pausedRef.current = isPaused;
+  }, [isPaused]);
+
+  useEffect(() => {
+    costOverrideRef.current = costOverride;
+  }, [costOverride]);
+
+  useEffect(() => {
+    let frameId = 0;
+    let lastTime = performance.now();
+    let accumulated = 0;
+
+    const step = (time: number) => {
+      const delta = time - lastTime;
+      lastTime = time;
+
+      if (!pausedRef.current) {
+        accumulated += delta;
+        const currentTickMs = tickMsRef.current;
+        if (currentTickMs > 0) {
+          while (accumulated >= currentTickMs) {
+            accumulated -= currentTickMs;
+            setState((prev) => tickSim(prev, costOverrideRef.current));
+          }
+        }
+      } else {
+        accumulated = 0;
+      }
+
+      frameId = requestAnimationFrame(step);
+    };
+
+    frameId = requestAnimationFrame(step);
+
+    return () => cancelAnimationFrame(frameId);
   }, []);
 
-  const metrics = useMemo(() => computeMetrics(state), [state]);
+  const metrics = useMemo(() => computeMetrics(state, costOverride), [state, costOverride]);
 
   const handleScaleApp = () => {
     if (state.cash < SCALE_COST) return;
@@ -78,6 +118,16 @@ export default function App() {
     }));
   };
 
+  const handleTickMsChange = (value: number) => {
+    if (!Number.isFinite(value) || value <= 0) return;
+    setTickMs(Math.max(1, value));
+  };
+
+  const handleCostOverrideChange = (value: number | null) => {
+    if (value !== null && !Number.isFinite(value)) return;
+    setCostOverride(value);
+  };
+
   return (
     <div style={{ position: "relative", height: "100vh" }}>
       <InfraScene
@@ -91,7 +141,14 @@ export default function App() {
 
       <div className="ui-overlay">
         <div className="top-left">
-          <Dashboard metrics={metrics} />
+          <Dashboard
+            metrics={metrics}
+            tickMs={tickMs}
+            onTickMsChange={handleTickMsChange}
+            costOverride={costOverride}
+            onCostOverrideChange={handleCostOverrideChange}
+            onSetCostOverrideZero={() => setCostOverride(0)}
+          />
         </div>
         <div className="top-right">
           <Controls
@@ -103,8 +160,10 @@ export default function App() {
             onUpgradeDb={handleUpgradeDb}
             onToggleCache={handleToggleCache}
             onToggleQueue={handleToggleQueue}
+            onTogglePause={() => setIsPaused((prev) => !prev)}
             cacheEnabled={state.cacheEnabled}
             queueEnabled={state.queueEnabled}
+            isPaused={isPaused}
             scaleCost={SCALE_COST}
             lbUpgradeCost={LB_UPGRADE_COST}
             dbUpgradeCost={DB_UPGRADE_COST}
@@ -126,7 +185,7 @@ export default function App() {
         <div className="bottom-right panel">
           <h3>Live Status</h3>
           <div className="small">
-            Tick every 1s · Timeout {state.timeoutMs} ms · Revenue per request ${
+            Tick every {tickMs} ms · Timeout {state.timeoutMs} ms · Revenue per request ${
               state.revenuePerReq
             }
           </div>

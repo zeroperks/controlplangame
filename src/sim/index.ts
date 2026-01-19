@@ -99,7 +99,7 @@ export const createInitialState = (): SimState => {
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-export const computeMetrics = (state: SimState): SimMetrics => {
+export const computeMetrics = (state: SimState, infraCostOverride?: number | null): SimMetrics => {
   const lbCapacity = COMPONENTS.lb.baseCapacity + state.lbUpgrade * LB_UPGRADE_CAP;
   const appCapacity = COMPONENTS.app.baseCapacity * state.appInstances;
   const dbCapacity = COMPONENTS.db.baseCapacity + state.dbUpgrade * DB_UPGRADE_CAP;
@@ -181,6 +181,7 @@ export const computeMetrics = (state: SimState): SimMetrics => {
     state.appInstances * APP_INSTANCE_OP_EX +
     (state.cacheEnabled ? COMPONENTS.cache.opEx : 0) +
     (state.queueEnabled ? COMPONENTS.queue.opEx : 0);
+  const effectiveCost = infraCostOverride ?? infraCost;
 
   const p95Latency = totalLatency * 1.2;
 
@@ -234,7 +235,7 @@ export const computeMetrics = (state: SimState): SimMetrics => {
     errorRate,
     totalLatency,
     p95Latency,
-    costPerTick: infraCost,
+    costPerTick: effectiveCost,
     revenuePerTick,
     cash: state.cash,
     backlog,
@@ -244,8 +245,8 @@ export const computeMetrics = (state: SimState): SimMetrics => {
   };
 };
 
-export const tickSim = (state: SimState): SimState => {
-  const metrics = computeMetrics(state);
+export const tickSim = (state: SimState, infraCostOverride?: number | null): SimState => {
+  const metrics = computeMetrics(state, infraCostOverride);
   const nextCash = state.cash + metrics.revenuePerTick - metrics.costPerTick;
   const nextErrorStreak = metrics.errorRate > 0.2 ? state.errorStreak + 1 : 0;
   let warning = "";

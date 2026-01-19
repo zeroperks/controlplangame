@@ -2,12 +2,52 @@ import { formatMoney, formatNumber, formatPercent, SimMetrics } from "../sim";
 
 interface DashboardProps {
   metrics: SimMetrics;
+  tickMs: number;
+  onTickMsChange: (value: number) => void;
+  costOverride: number | null;
+  onCostOverrideChange: (value: number | null) => void;
+  onSetCostOverrideZero: () => void;
 }
 
-export const Dashboard = ({ metrics }: DashboardProps) => {
+export const Dashboard = ({
+  metrics,
+  tickMs,
+  onTickMsChange,
+  costOverride,
+  onCostOverrideChange,
+  onSetCostOverrideZero
+}: DashboardProps) => {
   return (
     <div className="panel">
       <h3>Infra Snapshot · Tick {metrics.tick}</h3>
+      <div style={{ marginBottom: 12, display: "grid", gap: 8 }}>
+        <label className="small" style={{ display: "grid", gap: 4 }}>
+          Tick ms
+          <input
+            type="number"
+            min={50}
+            step={50}
+            value={tickMs}
+            onChange={(event) => onTickMsChange(Number(event.target.value))}
+          />
+        </label>
+        <label className="small" style={{ display: "grid", gap: 4 }}>
+          Cost / tick override
+          <div style={{ display: "flex", gap: 6 }}>
+            <input
+              type="number"
+              step={1}
+              value={costOverride ?? ""}
+              onChange={(event) =>
+                onCostOverrideChange(event.target.value === "" ? null : Number(event.target.value))
+              }
+            />
+            <button type="button" onClick={onSetCostOverrideZero}>
+              Set to 0
+            </button>
+          </div>
+        </label>
+      </div>
       <div className="stat-grid">
         <div>
           <div className="stat-label">Incoming RPS</div>
